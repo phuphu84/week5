@@ -8,11 +8,14 @@
                  alt="Joke Image" 
                  style="max-width: 300px; height: auto; margin: 10px 0; border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
         </div>
-    <?php endif; ?>
+    <?php endif;
+  ?>
 
     <form action="deletejoke.php" method="post">
       <input type="hidden" name="id" value="<?= (int)$joke['id'] ?>">
       <input type="submit" value="Delete">
     </form>
   </blockquote>
-<?php endforeach; ?>
+
+<?php endforeach;
+?>
