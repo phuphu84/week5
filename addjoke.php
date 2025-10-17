@@ -1,28 +1,51 @@
 <?php
 include 'includes/DatabaseConnection.php';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $joketext = trim($_POST['joketext'] ?? '');
+if (isset($_POST['joketext']) && $_POST['joketext'] !== '') {
+    $imagePath = null;
 
-    if ($joketext === '') {
-        die('Please enter a joke text.');
+    if (isset($_FILES['image']) && $_FILES['image']['error'] == UPLOAD_ERR_OK) {
+  
+        $uploadDir = 'images/';
+        $absoluteUploadDir = dirname(__FILE__) . '/' . $uploadDir;
+        
+      
+        if (!file_exists($absoluteUploadDir)) {
+            mkdir($absoluteUploadDir, 0777, true);
+        }
+
+      
+        $fileName = basename($_FILES['image']['name']);
+        $imageFileType = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+        
+       
+        if (in_array($imageFileType, ['jpg', 'jpeg', 'png', 'gif'])) {
+            $uniqueFileName = uniqid() . '_' . $fileName;
+            $uploadFile = $absoluteUploadDir . $uniqueFileName;
+
+            if (move_uploaded_file($_FILES['image']['tmp_name'], $uploadFile)) {
+                $imagePath = $uniqueFileName;
+            }
+        }
     }
-    $uploadDir = __DIR__ . '/images/';
-if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
 
-$imageName = null;
-if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
-    $tmp  = $_FILES['image']['tmp_name'];
-    $ext  = strtolower(pathinfo($_FILES['image']['name'], PATHINFO_EXTENSION));
-    if (!in_array($ext, ['jpg','jpeg','png','gif','webp'])) die('Invalid type');
-    $imageName = uniqid('joke_', true).'.'.$ext;
-    move_uploaded_file($tmp, $uploadDir.$imageName);
+    try {
+        $sql = 'INSERT INTO jokes (joketext, jokedate, image_path) 
+                VALUES (:joketext, CURDATE(), :image_path)';
+        $stmt = $pdo->prepare($sql);
+        $stmt->bindValue(':joketext', $_POST['joketext']);
+        $stmt->bindValue(':image_path', $imagePath);
+        $stmt->execute();
+        header('Location: jokes.php');
+        exit;
+    } catch (PDOException $e) {
+        $title = 'Database error';
+        $output = 'Database error: ' . $e->getMessage();
+    }
+} else {
+    $title = 'Add a new joke';
+    ob_start();
+    include 'templates/addjoke.html.php';
+    $output = ob_get_clean();
 }
-
-$stmt = $pdo->prepare('INSERT INTO jokes (joketext, jokedate, image) VALUES (:t, CURDATE(), :img)');
-$stmt->execute([':t'=>$joketext, ':img'=>$imageName]);
-
-
-    header('Location: jokes.php');
-    exit;
-}
+include 'templates/layout.html.php';
